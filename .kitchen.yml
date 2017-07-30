@@ -1,0 +1,48 @@
+---
+driver_config:
+  name: ec2
+  aws_ssh_key_id: <%= ENV['AWS_KEYPAIR_NAME'] %>
+  region: us-west-2
+  availability_zone: us-west-2a
+
+transport:
+  ssh_key: <%= ENV['EC2_SSH_KEY_PATH'] %>
+
+provisioner:
+  name: chef_zero
+  deprecations_as_errors: true
+
+verifier:
+  name: inspec
+
+platforms:
+- name: amazon-2017-07
+  driver_config:
+    image_id: ami-483a428
+    instance_type: t2.small
+  transport:
+    username: ec2-user
+
+- name: resource_tag
+    run_list:
+    - recipe[aws_test::resource_tag]
+    attributes:
+      aws_test:
+        key_id: <%= ENV['AWS_ACCESS_KEY_ID'] %>
+        access_key: <%= ENV['AWS_SECRET_ACCESS_KEY'] %>
+
+network:
+  -["forwarded_port", {guest:80, host: 443}]
+  -["forward_port", {guest: 443, host: 8080}]
+
+verifier:
+  name: inspec
+
+suites:
+  - name: default
+    run_list:
+      - recipe[httpd::default]
+    verifier:
+      inspec_tests:
+        - test/smoke/default
+    attributes:
